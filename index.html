@@ -455,6 +455,18 @@ li {
 .support-card {
   border-top: 4px solid var(--teal);
 }
+.support-grid + .support-grid {
+  margin-top: 12px;
+}
+.support-group {
+  align-items: start;
+}
+.card-more summary {
+  margin-top: 4px;
+}
+.card-more ul {
+  margin-top: 6px;
+}
 .support-card .use-with {
   color: var(--blue);
   font-weight: 700;
@@ -553,6 +565,12 @@ dialog::backdrop {
     break-inside: avoid;
     font-size: 9.5pt;
   }
+  .support-grid + .support-grid {
+    margin-top: 5mm;
+  }
+  .card-more summary {
+    display: none;
+  }
   .write-line {
     display: block;
     height: 5mm;
@@ -625,7 +643,7 @@ dialog::backdrop {
           </div>
           <button type="button" class="primary" id="print-cards">Print kaartjes</button>
         </div>
-        <div class="support-grid" id="support-cards"></div>
+        <div id="support-cards"></div>
       </section>
       <dialog id="details" aria-labelledby="card-title">
         <h2 id="card-title"></h2>
@@ -698,6 +716,8 @@ dialog::backdrop {
  * @property {string} gebruik Bij welke werkvorm of fase het kaartje hoort.
  * @property {string[]} vragen
  * @property {boolean} schrijflijnen Schrijflijnen tonen bij het printen.
+ * @property {string} [groep] Kaartjes met dezelfde groep staan samen in een eigen rij.
+ * @property {boolean} [inklapbaar] Op het scherm alleen de eerste regel tonen, de rest uitklapbaar. Bij het printen staat alles uitgeklapt.
  */
 
 /**
@@ -1457,9 +1477,11 @@ const kaartjes = [
     id: 'kaart-aarde',
     titel: 'Aarde',
     gebruik: 'In je element',
+    groep: 'in-je-element',
+    inklapbaar: true,
     vragen: [
-      'Je staat met beide voeten op de aarde. De aarde draagt je. Zij is de basis onder je leven, je fundament. Daar kun je op vertrouwen en op steunen. Je wordt je lichaam gewaar. Je voelt je botten: stevig, ze dragen je. De aarde was er lang voor jou en blijft na jou. Dat oude, tijdloze draag je mee in je botten.',
       'Aarde brengt je in het hier en nu.',
+      'Je staat met beide voeten op de aarde. De aarde draagt je. Zij is de basis onder je leven, je fundament. Daar kun je op vertrouwen en op steunen. Je wordt je lichaam gewaar. Je voelt je botten: stevig, ze dragen je. De aarde was er lang voor jou en blijft na jou. Dat oude, tijdloze draag je mee in je botten.',
       'Talenten: Nauwgezet · Ondersteunend · Vertrouwend · Zorgvuldig · Vastberaden · Evenwichtig · Nuchter · Rustig · Kalm · Trouw · Ordelijk · Consequent · Eerlijk · Duidelijk · Principieel · Zelfstandig · Solidair · Praktisch · Geduldig · Verantwoordelijk · Eenvoudig · Serieus · Standvastig · Handig · Betrouwbaar',
       'Niet elke verandering maakt het beter!',
       'Houd je hoofd koel: het loopt zoals het loopt!',
@@ -1479,9 +1501,11 @@ const kaartjes = [
     id: 'kaart-water',
     titel: 'Water',
     gebruik: 'In je element',
+    groep: 'in-je-element',
+    inklapbaar: true,
     vragen: [
-      'Je beweegt soepel mee met de stroom. Water is helder: je ziet alles, en het vindt altijd een weg. Je voelt die helderheid en staat open. Vriendelijk en mild ga je om met de mensen om je heen. Je lichaam is voor het grootste deel water. Het stroomt op en neer en golft door je heen. Water is je element van gevoel. Maak je contact met je gevoel, dan komt je innerlijke stroom op gang.',
       'Water laat je gevoel spreken.',
+      'Je beweegt soepel mee met de stroom. Water is helder: je ziet alles, en het vindt altijd een weg. Je voelt die helderheid en staat open. Vriendelijk en mild ga je om met de mensen om je heen. Je lichaam is voor het grootste deel water. Het stroomt op en neer en golft door je heen. Water is je element van gevoel. Maak je contact met je gevoel, dan komt je innerlijke stroom op gang.',
       'Talenten: Meelevend · Harmonieus · Flexibel · Tactvol · Bescheiden · Benaderbaar · Vriendelijk · Open · Sociaal · Begripvol · Aandachtig · Bemiddelend · Mild · Inlevend · Betrokken · Toegewijd · Openhartig · Gemoedelijk · Zorgzaam · Welwillend · Loyaal · Gevoelig · Verdraagzaam · Behoedzaam · Transparant · Speels',
       'Samen kom je verder. Stem je af op de ander en maak echt contact!',
       'Durf te zeggen wat er in je leeft!',
@@ -1501,9 +1525,11 @@ const kaartjes = [
     id: 'kaart-vuur',
     titel: 'Vuur',
     gebruik: 'In je element',
+    groep: 'in-je-element',
+    inklapbaar: true,
     vragen: [
-      'Je gaat naar de plek waar het vuur brandt. Vuur is energie. Het geeft je de kracht om op weg te gaan en uitdagingen op te zoeken. Je bent gedreven en je komt doelgericht in actie. In je lichaam wordt voedsel verbrand, zoals hout in een vuur. Je wordt warm van enthousiasme en overvloed. Je innerlijke vuur drijft je vooruit. Het geeft je de drang om te doen.',
       'Vuur spoort je aan tot daadkracht.',
+      'Je gaat naar de plek waar het vuur brandt. Vuur is energie. Het geeft je de kracht om op weg te gaan en uitdagingen op te zoeken. Je bent gedreven en je komt doelgericht in actie. In je lichaam wordt voedsel verbrand, zoals hout in een vuur. Je wordt warm van enthousiasme en overvloed. Je innerlijke vuur drijft je vooruit. Het geeft je de drang om te doen.',
       'Talenten: Avontuurlijk · Direct · Doelgericht · Impulsief · Inspirerend · Geestdriftig · Energiek · Krachtig · Oplettend · Idealistisch · Intens · Creatief · Initiatiefrijk · Moedig · IJverig · Veranderingsgericht · Veelzijdig · Spontaan · Enthousiast · Ambitieus · Doorzetter · Gedisciplineerd · Doortastend',
       'Wie stilstaat, gaat achteruit. Blijf in beweging!',
       'Wachten heeft geen zin. Zet zelf de eerste stap!',
@@ -1523,9 +1549,11 @@ const kaartjes = [
     id: 'kaart-lucht',
     titel: 'Lucht',
     gebruik: 'In je element',
+    groep: 'in-je-element',
+    inklapbaar: true,
     vragen: [
-      'Vanuit de lucht overzie je alles. Het is een goede plek om vooruit te kijken, verder dan je gewoonlijk kunt zien. Je ziet verbanden en pakt zaken logisch aan. Je hoofd is wendbaar: je soepele denkkracht opent veel mogelijkheden. Met belangstelling en humor beweeg je je graag tussen mensen. Je adem en je stem gebruik je om te communiceren. Je brengt je boodschap helder en objectief.',
       'Lucht zet je aan het denken.',
+      'Vanuit de lucht overzie je alles. Het is een goede plek om vooruit te kijken, verder dan je gewoonlijk kunt zien. Je ziet verbanden en pakt zaken logisch aan. Je hoofd is wendbaar: je soepele denkkracht opent veel mogelijkheden. Met belangstelling en humor beweeg je je graag tussen mensen. Je adem en je stem gebruik je om te communiceren. Je brengt je boodschap helder en objectief.',
       'Talenten: Optimistisch · Creatief · Bespiegelend · Fantasievol · Intelligent · Slim · Politiek · Nieuwsgierig · Humoristisch · Redenerend · Analytisch · Systematisch · Luchtig · Objectief · Inventief · Innoverend · Spraakzaam · Strategisch · Gul · Theoretisch · Veerkrachtig · Associatief · Communicatief',
       'Neem er rustig de tijd voor en zet de voor- en nadelen op een rij!',
       'Ontleed de situatie tot je de essentie ziet!',
@@ -1933,29 +1961,64 @@ function renderMethoden() {
   );
 }
 
-/** De ondersteunende kaartjes, met schrijflijnen voor de printversie. */
+/**
+ * Eén regel van een kaartje, met een schrijflijn als het kaartje die heeft.
+ * @param {string} tekst
+ * @param {boolean} schrijflijn
+ * @returns {string}
+ */
+function renderKaartRegel(tekst, schrijflijn) {
+  return (
+    '<li>' +
+    escapeHtml(tekst) +
+    (schrijflijn ? '<span class="write-line" aria-hidden="true"></span>' : '') +
+    '</li>'
+  );
+}
+
+/**
+ * Eén kaartje. Bij een inklapbaar kaartje blijft de eerste regel zichtbaar en klapt de rest uit.
+ * @param {Kaartje} kaartje
+ * @returns {string}
+ */
+function renderKaartje(kaartje) {
+  const regels = (/** @type {string[]} */ lijst) =>
+    lijst.map((tekst) => renderKaartRegel(tekst, kaartje.schrijflijnen)).join('');
+  const zichtbaar = kaartje.inklapbaar ? kaartje.vragen.slice(0, 1) : kaartje.vragen;
+  const verborgen = kaartje.inklapbaar ? kaartje.vragen.slice(1) : [];
+  return (
+    '<article class="support-card" id="' +
+    kaartje.id +
+    '" tabindex="-1"><h3>' +
+    escapeHtml(kaartje.titel) +
+    '</h3><p class="use-with">' +
+    escapeHtml(kaartje.gebruik) +
+    '</p><ul>' +
+    regels(zichtbaar) +
+    '</ul>' +
+    (verborgen.length
+      ? '<details class="card-more"><summary>Toon de hele kaart</summary><ul>' +
+        regels(verborgen) +
+        '</ul></details>'
+      : '') +
+    '</article>'
+  );
+}
+
+/** De ondersteunende kaartjes: eerst de losse kaartjes, daarna elke groep in een eigen rij. */
 function renderKaartjes() {
-  byId('support-cards').innerHTML = kaartjes
+  const groepen = [...new Set(kaartjes.map((kaartje) => kaartje.groep || ''))];
+  byId('support-cards').innerHTML = groepen
     .map(
-      (kaartje) =>
-        '<article class="support-card" id="' +
-        kaartje.id +
-        '" tabindex="-1"><h3>' +
-        escapeHtml(kaartje.titel) +
-        '</h3>' +
-        '<p class="use-with">' +
-        escapeHtml(kaartje.gebruik) +
-        '</p><ul>' +
-        kaartje.vragen
-          .map(
-            (vraag) =>
-              '<li>' +
-              escapeHtml(vraag) +
-              (kaartje.schrijflijnen ? '<span class="write-line" aria-hidden="true"></span>' : '') +
-              '</li>'
-          )
+      (groep) =>
+        '<div class="support-grid' +
+        (groep ? ' support-group' : '') +
+        '">' +
+        kaartjes
+          .filter((kaartje) => (kaartje.groep || '') === groep)
+          .map(renderKaartje)
           .join('') +
-        '</ul></article>'
+        '</div>'
     )
     .join('');
 }
@@ -2337,7 +2400,27 @@ function bindEvents() {
     document.body.classList.add('print-cards');
     window.print();
   });
-  window.addEventListener('afterprint', () => document.body.classList.remove('print-cards'));
+  window.addEventListener('beforeprint', klapKaartjesUit);
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('print-cards');
+    klapKaartjesIn();
+  });
+}
+
+/** Klap voor het printen alle ingeklapte kaartjes uit en onthoud welke dat waren. */
+function klapKaartjesUit() {
+  for (const details of document.querySelectorAll('#support details:not([open])')) {
+    /** @type {HTMLDetailsElement} */ (details).open = true;
+    /** @type {HTMLElement} */ (details).dataset.dichtNaPrint = '';
+  }
+}
+
+/** Klap na het printen de kaartjes weer in die voor het printen dicht waren. */
+function klapKaartjesIn() {
+  for (const details of document.querySelectorAll('#support details[data-dicht-na-print]')) {
+    /** @type {HTMLDetailsElement} */ (details).open = false;
+    delete (/** @type {HTMLElement} */ (details).dataset.dichtNaPrint);
+  }
 }
 
 /** Koppel de schakelaar en de routeknoppen van de spelvorm "twee routes". */
