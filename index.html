@@ -241,6 +241,58 @@ button:disabled {
   gap: 8px;
   flex-wrap: wrap;
 }
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mode-switch input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+}
+.mode-info {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+.route-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.route-tabs button {
+  flex: 1;
+}
+.route-tabs button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+.route-tabs[hidden],
+.route-badge[hidden] {
+  display: none;
+}
+.route-badge {
+  display: inline-block;
+  margin: 0 0 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+#route .route-part {
+  margin: 6px 0;
+}
+#route .route-part ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
 fieldset.phase {
   padding: 0;
 }
@@ -420,6 +472,13 @@ li {
 #steps ol {
   margin: 4px 0;
 }
+#steps > li.route-part {
+  break-inside: auto;
+}
+#steps .route-part > ol > li {
+  margin-bottom: 14px;
+  break-inside: avoid;
+}
 dialog {
   width: min(94%, 540px);
   max-height: 90dvh;
@@ -533,6 +592,17 @@ dialog::backdrop {
         <form id="phases" aria-label="Werkvormen per fase"></form>
         <aside>
           <h2>Jouw route</h2>
+          <label class="mode-switch"
+            ><input type="checkbox" id="twee-routes" /> <span id="twee-routes-naam"></span
+          ></label>
+          <p id="twee-routes-uitleg" class="mode-info" hidden></p>
+          <div
+            id="route-tabs"
+            class="route-tabs"
+            role="group"
+            aria-label="Route die je nu kiest"
+            hidden
+          ></div>
           <div id="status" role="status"></div>
           <ol id="route"></ol>
           <div class="actions">
@@ -627,6 +697,18 @@ dialog::backdrop {
  * @property {string} gebruik Bij welke werkvorm of fase het kaartje hoort.
  * @property {string[]} vragen
  * @property {boolean} schrijflijnen Schrijflijnen tonen bij het printen.
+ */
+
+/**
+ * @typedef {Object} TweeRoutes
+ * @property {string} naam Naam van de spelvorm, ook het label van de schakelaar.
+ * @property {string} omschrijving Korte uitleg die verschijnt als de spelvorm aanstaat.
+ * @property {string[]} gedeeldeFasen Fase-id's die je één keer doet voor beide routes, aan het begin of het eind.
+ * @property {string[]} routeNamen Precies twee namen, één per route.
+ * @property {string} afsluitingRoute Opdracht aan het eind van elke route.
+ * @property {string} kaartje Id van het kaartje waarop je het inzicht per route vastlegt.
+ * @property {string} vergelijkTitel Titel van de vergelijkstap vóór het oogsten.
+ * @property {string[]} vergelijkVragen Vragen om de twee routes te vergelijken.
  */
 
 /** @type {Fase[]} */
@@ -1281,6 +1363,24 @@ const kaartjes = [
     schrijflijnen: false,
   },
 ];
+
+/** @type {TweeRoutes} */
+const tweeRoutes = {
+  naam: 'Eén casus, twee routes',
+  omschrijving:
+    'Onderzoek dezelfde casus en leervraag via twee routes. Je brengt één keer in, doorloopt de middelste fasen per route en vergelijkt bij het oogsten wat elke route heeft opgeleverd.',
+  gedeeldeFasen: ['inbrengen', 'oogsten'],
+  routeNamen: ['Route A', 'Route B'],
+  afsluitingRoute: 'Leg het belangrijkste inzicht van deze route vast.',
+  kaartje: 'kaart-inzicht',
+  vergelijkTitel: 'De routes vergelijken',
+  vergelijkVragen: [
+    'Wat heeft elke route opgeleverd voor de leervraag?',
+    'Waar vullen de twee inzichten elkaar aan en waar verschillen ze?',
+    'Welke route bracht de inbrenger het dichtst bij een volgende stap?',
+    'Welke vervolgstap kies je op basis van beide routes?',
+  ],
+};
 </script>
     <script>
 // @ts-check
@@ -1369,6 +1469,30 @@ function inWoorden(aantal) {
   return woorden[aantal] || String(aantal);
 }
 
+/**
+ * @typedef {{ fase: Fase, werkvorm: Werkvorm }} Keuze
+ * @typedef {{ route: number | null, keuzes: Keuze[], vergelijk: boolean }} Onderdeel
+ *   route is de plek in tweeRoutes.routeNamen, of null voor gedeelde fasen.
+ */
+
+/**
+ * Hoort deze fase bij beide routes tegelijk (spelvorm "twee routes")?
+ * @param {Fase} fase
+ * @returns {boolean}
+ */
+function isGedeeld(fase) {
+  return tweeRoutes.gedeeldeFasen.includes(fase.id);
+}
+
+/**
+ * Totaal aan minuten van een reeks keuzes.
+ * @param {Keuze[]} keuzes
+ * @returns {number}
+ */
+function telMinuten(keuzes) {
+  return keuzes.reduce((total, { werkvorm }) => total + werkvorm.minuten, 0);
+}
+
 /* ---------- CONTROLE ---------- */
 
 /**
@@ -1450,6 +1574,30 @@ function checkUniek(soort, items) {
 }
 
 /**
+ * Controleer de spelvorm "twee routes": fasen, routenamen, kaartje en vergelijkvragen.
+ * @returns {string[]} Gevonden fouten.
+ */
+function checkTweeRoutes() {
+  const label = 'Twee routes';
+  const errors = tweeRoutes.gedeeldeFasen
+    .filter((id) => !fasen.some((fase) => fase.id === id))
+    .map((id) => label + ': fase "' + id + '" bestaat niet.');
+  const eigen = fasen.map((fase) => !isGedeeld(fase));
+  const eerste = eigen.indexOf(true);
+  if (eerste < 0 || eigen.slice(eerste, eigen.lastIndexOf(true) + 1).includes(false))
+    errors.push(label + ': gedeelde fasen horen aan het begin of eind, met eigen fasen ertussen.');
+  if (tweeRoutes.routeNamen.length !== 2)
+    errors.push(label + ': er moeten precies twee routenamen zijn.');
+  if (!findKaartje(tweeRoutes.kaartje))
+    errors.push(label + ': kaartje "' + tweeRoutes.kaartje + '" bestaat niet.');
+  for (const veld of ['naam', 'omschrijving', 'afsluitingRoute', 'vergelijkTitel']) {
+    if (!tweeRoutes[veld]) errors.push(label + ': veld "' + veld + '" ontbreekt.');
+  }
+  if (!tweeRoutes.vergelijkVragen.length) errors.push(label + ': vergelijkvragen ontbreken.');
+  return errors;
+}
+
+/**
  * Controleer alle data. Geeft een lijst met fouten; leeg betekent in orde.
  * @returns {string[]}
  */
@@ -1473,6 +1621,7 @@ function validateData() {
         ? []
         : ['Methode "' + item.naam + '": geen route en geen leidraad.'];
     }),
+    ...checkTweeRoutes(),
   ];
 }
 
@@ -1546,7 +1695,9 @@ function renderFasen() {
         '<fieldset class="phase"><legend class="sr-only">' +
         escapeHtml(fase.titel) +
         '</legend>' +
-        '<div class="phase-header"><h2>' +
+        '<div class="phase-header">' +
+        (isGedeeld(fase) ? '' : '<p class="route-badge" hidden></p>') +
+        '<h2>' +
         escapeHtml(fase.titel) +
         '</h2><p>' +
         escapeHtml(fase.kernvraag) +
@@ -1664,6 +1815,100 @@ function renderDraaiboekStap({ fase, werkvorm }) {
 }
 
 /**
+ * Kop van één route binnen het overzicht of draaiboek: naam en minuten.
+ * @param {Onderdeel} onderdeel
+ * @returns {string}
+ */
+function renderRouteKop(onderdeel) {
+  return (
+    escapeHtml(tweeRoutes.routeNamen[onderdeel.route ?? 0]) +
+    ' · ' +
+    telMinuten(onderdeel.keuzes) +
+    ' min'
+  );
+}
+
+/**
+ * Het routeoverzicht in de zijbalk, met een groep per route als er twee zijn.
+ * @param {Onderdeel[]} onderdelen
+ * @returns {string}
+ */
+function renderRouteOverzicht(onderdelen) {
+  return onderdelen
+    .map((onderdeel) => {
+      const items = onderdeel.keuzes
+        .map(
+          ({ werkvorm }) =>
+            '<li>' + escapeHtml(werkvorm.naam) + ' · ' + werkvorm.minuten + ' min</li>'
+        )
+        .join('');
+      if (onderdeel.route === null) return items;
+      return (
+        '<li class="route-part"><strong>' +
+        renderRouteKop(onderdeel) +
+        '</strong><ol>' +
+        items +
+        '</ol></li>'
+      );
+    })
+    .join('');
+}
+
+/** @returns {string} De vergelijkstap vóór het oogsten bij twee routes. */
+function renderVergelijkStap() {
+  return (
+    '<li><strong>' +
+    escapeHtml(tweeRoutes.vergelijkTitel) +
+    '</strong><ol>' +
+    listItems(tweeRoutes.vergelijkVragen) +
+    '</ol></li>'
+  );
+}
+
+/**
+ * Alle stappen van het draaiboek, met bij twee routes een blok per route en een vergelijking.
+ * @param {Onderdeel[]} onderdelen
+ * @returns {string}
+ */
+function renderDraaiboek(onderdelen) {
+  const kaartje = findKaartje(tweeRoutes.kaartje);
+  return onderdelen
+    .map((onderdeel) => {
+      const stappen = onderdeel.keuzes.map(renderDraaiboekStap).join('');
+      if (onderdeel.route === null)
+        return (onderdeel.vergelijk ? renderVergelijkStap() : '') + stappen;
+      return (
+        '<li class="route-part"><h3>' +
+        renderRouteKop(onderdeel) +
+        '</h3><ol>' +
+        stappen +
+        '</ol><p><strong>' +
+        escapeHtml(kaartje ? kaartje.titel : '') +
+        '</strong> · ' +
+        escapeHtml(tweeRoutes.afsluitingRoute) +
+        '</p></li>'
+      );
+    })
+    .join('');
+}
+
+/** Labels, uitleg en routeknoppen voor de spelvorm "twee routes". */
+function renderTweeRoutes() {
+  byId('twee-routes-naam').textContent = tweeRoutes.naam;
+  byId('twee-routes-uitleg').textContent = tweeRoutes.omschrijving;
+  byId('route-tabs').innerHTML = tweeRoutes.routeNamen
+    .map(
+      (naam, route) =>
+        '<button type="button" data-route="' +
+        route +
+        '" aria-pressed="false">' +
+        escapeHtml(naam) +
+        '</button>'
+    )
+    .join('');
+}
+
+/**
  * Vul het uitlegvenster voor één werkvorm en open het.
  * @param {string} werkvormId
  */
@@ -1711,6 +1956,130 @@ function getSelection() {
   });
 }
 
+/** @returns {boolean} Staat de spelvorm "twee routes" aan? */
+function tweeRoutesAan() {
+  return /** @type {HTMLInputElement} */ (byId('twee-routes')).checked;
+}
+
+/** @returns {number} De route die nu in het formulier staat: 0 of 1. */
+function actieveRoute() {
+  return Number(byId('phases').dataset.actief || 0);
+}
+
+/**
+ * Bewaarde keuzes van de eigen fasen van een route, als fase-id → werkvorm-id.
+ * @param {number} route
+ * @returns {Record<string, string>}
+ */
+function bewaardeKeuzes(route) {
+  return JSON.parse(byId('phases').dataset['keuzes' + route] || '{}');
+}
+
+/** Bewaar de eigen fasen van de actieve route op het formulier. */
+function bewaarActieveRoute() {
+  /** @type {Record<string, string>} */
+  const keuzes = {};
+  for (const fase of fasen) {
+    const input = checkedInput(fase);
+    if (input && !isGedeeld(fase)) keuzes[fase.id] = input.value;
+  }
+  byId('phases').dataset['keuzes' + actieveRoute()] = JSON.stringify(keuzes);
+}
+
+/**
+ * Zet de eigen fasen in het formulier op de bewaarde keuzes van een route.
+ * @param {number} route
+ */
+function toonRoute(route) {
+  const keuzes = bewaardeKeuzes(route);
+  for (const fase of fasen.filter((item) => !isGedeeld(item))) {
+    const inputs = byId('phases').querySelectorAll('input[name="fase-' + fase.id + '"]');
+    for (const input of /** @type {NodeListOf<HTMLInputElement>} */ (inputs))
+      input.checked = keuzes[fase.id] === input.value;
+  }
+  byId('phases').dataset.actief = String(route);
+}
+
+/**
+ * Wissel naar een andere route en houd de keuzes van de vorige vast.
+ * @param {number} route
+ */
+function wisselRoute(route) {
+  if (route === actieveRoute()) return;
+  bewaarActieveRoute();
+  toonRoute(route);
+  update();
+}
+
+/**
+ * Keuzes van één route: uit het formulier als hij actief is, anders gedeelde fasen
+ * uit het formulier en eigen fasen uit de bewaarde keuzes.
+ * @param {number} route
+ * @returns {Keuze[]}
+ */
+function getRouteSelection(route) {
+  if (route === actieveRoute()) return getSelection();
+  const keuzes = bewaardeKeuzes(route);
+  return fasen.flatMap((fase) => {
+    const input = checkedInput(fase);
+    const id = isGedeeld(fase) ? input && input.value : keuzes[fase.id];
+    const found = id ? findWerkvorm(id) : undefined;
+    return found ? [found] : [];
+  });
+}
+
+/**
+ * De route in onderdelen. Bij twee routes: gedeelde fasen vooraf, de eigen fasen per route
+ * en de gedeelde fasen achteraf, met daarvóór de vergelijking.
+ * @returns {Onderdeel[]}
+ */
+function getOnderdelen() {
+  if (!tweeRoutesAan()) return [{ route: null, keuzes: getSelection(), vergelijk: false }];
+  const eersteEigen = fasen.findIndex((fase) => !isGedeeld(fase));
+  const routes = tweeRoutes.routeNamen.map((_, route) => getRouteSelection(route));
+  const gedeeld = routes[0].filter(({ fase }) => isGedeeld(fase));
+  return [
+    {
+      route: null,
+      keuzes: gedeeld.filter(({ fase }) => fasen.indexOf(fase) < eersteEigen),
+      vergelijk: false,
+    },
+    ...routes.map((keuzes, route) => ({
+      route,
+      keuzes: keuzes.filter(({ fase }) => !isGedeeld(fase)),
+      vergelijk: false,
+    })),
+    {
+      route: null,
+      keuzes: gedeeld.filter(({ fase }) => fasen.indexOf(fase) > eersteEigen),
+      vergelijk: true,
+    },
+  ];
+}
+
+/** @returns {number} Aantal fasen dat ingevuld moet zijn voor een compleet draaiboek. */
+function aantalNodig() {
+  if (!tweeRoutesAan()) return fasen.length;
+  return fasen.reduce((som, fase) => som + (isGedeeld(fase) ? 1 : 2), 0);
+}
+
+/** Toon of verberg de routeknoppen en het routelabel bij de fasen. */
+function updateTweeRoutes() {
+  const aan = tweeRoutesAan();
+  const actief = actieveRoute();
+  byId('route-tabs').hidden = !aan;
+  byId('twee-routes-uitleg').hidden = !aan;
+  for (const button of byId('route-tabs').querySelectorAll('button'))
+    button.setAttribute(
+      'aria-pressed',
+      String(button.getAttribute('data-route') === String(actief))
+    );
+  for (const badge of byId('phases').querySelectorAll('.route-badge')) {
+    /** @type {HTMLElement} */ (badge).hidden = !aan;
+    badge.textContent = tweeRoutes.routeNamen[actief];
+  }
+}
+
 /** Markeer de suggestie bij de eerste open fase na een ingevulde fase. */
 function updateSuggestie() {
   const form = byId('phases');
@@ -1734,22 +2103,20 @@ function updateSuggestie() {
 
 /** Werk routeoverzicht, knoppen, suggestie en draaiboek bij na elke wijziging. */
 function update() {
-  const selection = getSelection();
-  const minutes = selection.reduce((total, { werkvorm }) => total + werkvorm.minuten, 0);
-  const complete = selection.length === fasen.length;
+  const onderdelen = getOnderdelen();
+  const selection = onderdelen.flatMap((onderdeel) => onderdeel.keuzes);
+  const minutes = telMinuten(selection);
+  const complete = selection.length === aantalNodig();
   updateSuggestie();
+  updateTweeRoutes();
   byId('status').textContent =
-    selection.length + ' van ' + fasen.length + ' fasen · ' + minutes + ' min';
-  byId('route').innerHTML = selection
-    .map(
-      ({ werkvorm }) => '<li>' + escapeHtml(werkvorm.naam) + ' · ' + werkvorm.minuten + ' min</li>'
-    )
-    .join('');
+    selection.length + ' van ' + aantalNodig() + ' fasen · ' + minutes + ' min';
+  byId('route').innerHTML = renderRouteOverzicht(onderdelen);
   /** @type {HTMLButtonElement} */ (byId('print')).disabled = !complete;
   /** @type {HTMLButtonElement} */ (byId('reset')).disabled = selection.length === 0;
   byId('sheet').hidden = !complete;
   byId('duration').textContent = 'Totale werktijd · ' + minutes + ' minuten';
-  byId('steps').innerHTML = selection.map(renderDraaiboekStap).join('');
+  byId('steps').innerHTML = renderDraaiboek(onderdelen);
 }
 
 /**
@@ -1777,6 +2144,9 @@ function bindEvents() {
   });
   byId('reset').addEventListener('click', () => {
     form.reset();
+    delete form.dataset.keuzes0;
+    delete form.dataset.keuzes1;
+    form.dataset.actief = '0';
     update();
   });
   byId('card-support').addEventListener('click', () =>
@@ -1790,6 +2160,18 @@ function bindEvents() {
   window.addEventListener('afterprint', () => document.body.classList.remove('print-cards'));
 }
 
+/** Koppel de schakelaar en de routeknoppen van de spelvorm "twee routes". */
+function bindTweeRoutes() {
+  byId('twee-routes').addEventListener('change', () => {
+    if (!tweeRoutesAan()) wisselRoute(0);
+    update();
+  });
+  byId('route-tabs').addEventListener('click', (event) => {
+    const button = /** @type {HTMLElement} */ (event.target).closest('button[data-route]');
+    if (button) wisselRoute(Number(button.getAttribute('data-route')));
+  });
+}
+
 /** Start de app: controleer de data, bouw de pagina en koppel de bediening. */
 function start() {
   const errors = validateData();
@@ -1798,7 +2180,9 @@ function start() {
   renderVoorbeeldroutes();
   renderMethoden();
   renderKaartjes();
+  renderTweeRoutes();
   bindEvents();
+  bindTweeRoutes();
   update();
 }
 
